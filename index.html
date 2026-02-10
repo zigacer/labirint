@@ -5,12 +5,15 @@
 	</head>
 	<body>
 		<button id="start-btn" class="start-button">rešitev</button>
-		<svg width="484" height="484" viewBox="0 0 484 484" version="1.1" xmlns="http://www.w3.org/2000/svg">
-			<image href="slike/maze.svg" width="484" height="484" />
-      
-			
-		</svg>
+		<button id="play-btn" class="start-button" style="left: 120px;">Igraj</button>
+		<div class="svg-canvas-container">
+			<svg class="maze-svg" width="484" height="484" viewBox="0 0 484 484" version="1.1" xmlns="http://www.w3.org/2000/svg">
+				<image href="slike/maze.svg" width="484" height="484" />
+			</svg>
+			<canvas id="maze-canvas" width="484" height="484" class="maze-canvas"></canvas>
+		</div>
 	</body>
 	<script src="js/LineDraw.js"></script>
+	<script src="js/Play.js"></script>
 	
 </html>

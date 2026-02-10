@@ -1,3 +1,26 @@
+/* Container for SVG and Canvas overlay */
+.svg-canvas-container {
+  position: relative;
+  width: 484px;
+  height: 484px;
+  display: inline-block;
+}
+
+.maze-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.maze-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+  
+}
 body {
       background: #f5f5f5;
       display: flex;
@@ -21,9 +44,11 @@ body {
       }
     }
 
+
     .start-button {
       position: absolute;
       top: 20px;
+      left: 20px;
       padding: 10px 20px;
       font-size: 16px;
       background-color: #4CAF50;
@@ -32,6 +57,10 @@ body {
       border-radius: 4px;
       cursor: pointer;
       font-weight: bold;
+    }
+
+    #play-btn.start-button {
+      left: 120px;
     }
 
     .start-button:hover {
