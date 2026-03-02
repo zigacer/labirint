@@ -8,13 +8,119 @@ document.addEventListener('DOMContentLoaded', () => {
 	let y = radius + 5; // Start near the top center
 	const speed = 4;
 	let playing = false;
+let squares = [];
+const squareSize = 16;
+
+function spawnSquares() {
+	squares = [];
+	let attempts = 0;
+	while (squares.length < 3 && attempts < 500) {
+		attempts++;
+		// Random position inside canvas
+		const sqX = Math.floor(Math.random() * (canvas.width - squareSize - 2 * radius)) + radius + 1;
+		const sqY = Math.floor(Math.random() * (canvas.height - squareSize - 2 * radius)) + radius + 1;
+		// Check if square collides with any wall
+		let collides = false;
+		for (const line of wallLines) {
+			// Check all 4 corners of the square
+			if (
+				circleIntersectsLine(sqX, sqY, squareSize / 2, line.x1, line.y1, line.x2, line.y2) ||
+				circleIntersectsLine(sqX + squareSize, sqY, squareSize / 2, line.x1, line.y1, line.x2, line.y2) ||
+				circleIntersectsLine(sqX, sqY + squareSize, squareSize / 2, line.x1, line.y1, line.x2, line.y2) ||
+				circleIntersectsLine(sqX + squareSize, sqY + squareSize, squareSize / 2, line.x1, line.y1, line.x2, line.y2)
+			) {
+				collides = true;
+				break;
+			}
+		}
+		if (!collides) {
+			// Also check not overlapping with other squares
+			let overlap = squares.some(sq => Math.abs(sq.x - sqX) < squareSize && Math.abs(sq.y - sqY) < squareSize);
+			if (!overlap) {
+				squares.push({ x: sqX, y: sqY });
+			}
+		}
+	}
+}
+
+function drawSquares() {
+	for (const sq of squares) {
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(sq.x, sq.y, squareSize, squareSize);
+		ctx.fillStyle = 'orange';
+		ctx.fill();
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = '#b26500';
+		ctx.stroke();
+		ctx.restore();
+	}
+}
+
+	let timer = null;
+	let timeLeft = 120; // seconds
+
+	function startCountdown() {
+	timeLeft = 10;
+	let timerDiv = document.getElementById('timer-div');
+	if (timerDiv) timerDiv.style.display = 'block';
+	updateTimerDisplay();
+	if (timer) clearInterval(timer);
+	timer = setInterval(() => {
+		timeLeft--;
+		updateTimerDisplay();
+		if (timeLeft <= 0) {
+			clearInterval(timer);
+			timer = null;
+			playing = false;
+			if (timerDiv) timerDiv.style.display = 'none';
+			clearCanvas(); // clear everything
+			Swal.fire({
+				heightAuto: false,
+				icon: 'error',
+				title: 'Čas je potekel!',
+				text: 'Žal si izgubil igro.',
+				confirmButtonText: 'V redu'
+			});
+		}
+	}, 1000);
+}
+
+	function updateTimerDisplay() {
+	  let timerDiv = document.getElementById('timer-div');
+	  if (!timerDiv) {
+	    timerDiv = document.createElement('div');
+	    timerDiv.id = 'timer-div';
+	    timerDiv.style.position = 'absolute';
+	    timerDiv.style.top = '60px';
+	    timerDiv.style.left = '20px';
+	    timerDiv.style.fontSize = '20px';
+	    timerDiv.style.fontWeight = 'bold';
+	    timerDiv.style.background = 'rgba(255,255,255,0.8)';
+	    timerDiv.style.padding = '6px 16px';
+	    timerDiv.style.borderRadius = '6px';
+	    timerDiv.style.zIndex = '10';
+	    document.body.appendChild(timerDiv);
+	  }
+	  const min = Math.floor(timeLeft / 60);
+	  const sec = (timeLeft % 60).toString().padStart(2, '0');
+	  timerDiv.textContent = `Čas: ${min}:${sec}`;
+	}
 
 	function clearCanvas() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		// Redraw squares if playing
+		if (playing && squares.length > 0) {
+			drawSquares();
+		}
 	}
 
 	function drawCircle() {
 		clearCanvas();
+		// Draw squares first so circle is on top
+		if (playing && squares.length > 0) {
+			drawSquares();
+		}
 		ctx.beginPath();
 		ctx.arc(x, y, radius, 0, 2 * Math.PI);
 		ctx.fillStyle = '#ff0000'; // Red fill
@@ -54,15 +160,21 @@ document.addEventListener('DOMContentLoaded', () => {
 		const clampedX = Math.max(radius, Math.min(canvas.width - radius, nx));
 		const clampedY = Math.max(radius, Math.min(canvas.height - radius, ny));
 		if (collidesWithWall(clampedX, clampedY)) {
-			if (window.Swal) {
-				Swal.fire({
-					icon: 'error',
-					title: 'Oops!',
-					text: 'You hit a wall!'
-				});
-			} else {
-				alert('You hit a wall!');
+			// Stop and hide timer and player
+			if (timer) {
+				clearInterval(timer);
+				timer = null;
 			}
+			playing = false;
+			let timerDiv = document.getElementById('timer-div');
+			if (timerDiv) timerDiv.style.display = 'none';
+			clearCanvas(); // clear everything
+			Swal.fire({
+				heightAuto: false,
+				icon: 'error',
+				title: 'Oops!',
+				text: 'You hit a wall!'
+			});
 			return;
 		}
 		x = clampedX;
@@ -94,10 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	const playBtn = document.getElementById('play-btn');
 	if (playBtn) {
 		playBtn.addEventListener('click', () => {
+			playing = true;
 			x = canvas.width / 2;
 			y = radius + 5;
-			playing = true;
+			clearCanvas();
 			drawCircle();
+			startCountdown();
+			spawnSquares();
+			drawSquares();
 			// Hide the solution line if visible
 			const solutionLine = document.getElementById('solution-anim');
 			if (solutionLine) {
