@@ -1,14 +1,30 @@
-// Play.js: WASD movement for a circle on the canvas
+// Play.js: WASD movement with mission objectives.
 document.addEventListener('DOMContentLoaded', () => {
 	const canvas = document.getElementById('maze-canvas');
 	if (!canvas) return;
+
 	const ctx = canvas.getContext('2d');
-	const radius = 4;
-	let x = canvas.width / 2;
-	let y = radius + 5; // Start near the top center
+	ctx.imageSmoothingEnabled = false;
+	const timerDiv = document.getElementById('timer-div');
+	const missionChip = document.getElementById('mission-chip');
+	const coresEnabled = false;
+
+	const radius = 3;
 	const speed = 4;
+	const squareSize = 22;
+	const totalCores = coresEnabled ? 3 : 0;
+	const startPos = { x: canvas.width / 2, y: radius + 5 };
+	const exitGate = { x: canvas.width / 2, y: canvas.height - 7, r: 10 };
+
+	let x = startPos.x;
+	let y = startPos.y;
 	let playing = false;
-	const playerIcon = createPlayerIcon(radius * 2 + 1);
+	let timer = null;
+	let timeLeft = 120;
+	let squares = [];
+	let hintShown = false;
+
+	const playerIcon = createPlayerIcon(15);
 	const mazeAlert = Swal.mixin({
 		heightAuto: false,
 		background: '#fff4dc',
@@ -22,219 +38,143 @@ document.addEventListener('DOMContentLoaded', () => {
 			confirmButton: 'maze-alert-confirm'
 		}
 	});
-let squares = [];
-const squareSize = 16;
 
-function createPlayerIcon(size) {
-	const iconCanvas = document.createElement('canvas');
-	iconCanvas.width = size;
-	iconCanvas.height = size;
-	const iconCtx = iconCanvas.getContext('2d');
-	const center = size / 2;
-	const bodyW = size * 0.36;
-	const bodyH = size * 0.52;
-	const topY = center - bodyH * 0.58;
-	const bottomY = center + bodyH * 0.52;
-
-	iconCtx.save();
-	iconCtx.translate(center, center);
-
-	// Badge shadow.
-	iconCtx.beginPath();
-	iconCtx.arc(0, 0, size * 0.44, 0, 2 * Math.PI);
-	iconCtx.fillStyle = 'rgba(16, 32, 58, 0.22)';
-	iconCtx.fill();
-
-	// Outer badge.
-	iconCtx.beginPath();
-	iconCtx.arc(0, 0, size * 0.4, 0, 2 * Math.PI);
-	iconCtx.fillStyle = '#00a6a6';
-	iconCtx.fill();
-	iconCtx.lineWidth = 1.8;
-	iconCtx.strokeStyle = '#015b5b';
-	iconCtx.stroke();
-
-	// Rocket body.
-	iconCtx.beginPath();
-	iconCtx.moveTo(0, topY);
-	iconCtx.quadraticCurveTo(bodyW, center - bodyH * 0.15, bodyW * 0.5, bottomY);
-	iconCtx.lineTo(-bodyW * 0.5, bottomY);
-	iconCtx.quadraticCurveTo(-bodyW, center - bodyH * 0.15, 0, topY);
-	iconCtx.closePath();
-	iconCtx.fillStyle = '#fff4dc';
-	iconCtx.fill();
-	iconCtx.lineWidth = 1.4;
-	iconCtx.strokeStyle = '#ff8c4a';
-	iconCtx.stroke();
-
-	// Window.
-	iconCtx.beginPath();
-	iconCtx.arc(0, center - bodyH * 0.1, size * 0.1, 0, 2 * Math.PI);
-	iconCtx.fillStyle = '#57c7ff';
-	iconCtx.fill();
-	iconCtx.strokeStyle = '#1f4b7a';
-	iconCtx.lineWidth = 1;
-	iconCtx.stroke();
-
-	// Fins.
-	iconCtx.beginPath();
-	iconCtx.moveTo(-bodyW * 0.45, center + bodyH * 0.18);
-	iconCtx.lineTo(-bodyW * 0.95, center + bodyH * 0.35);
-	iconCtx.lineTo(-bodyW * 0.42, center + bodyH * 0.42);
-	iconCtx.closePath();
-	iconCtx.fillStyle = '#ff5b2e';
-	iconCtx.fill();
-
-	iconCtx.beginPath();
-	iconCtx.moveTo(bodyW * 0.45, center + bodyH * 0.18);
-	iconCtx.lineTo(bodyW * 0.95, center + bodyH * 0.35);
-	iconCtx.lineTo(bodyW * 0.42, center + bodyH * 0.42);
-	iconCtx.closePath();
-	iconCtx.fillStyle = '#ff5b2e';
-	iconCtx.fill();
-
-	// Flame.
-	iconCtx.beginPath();
-	iconCtx.moveTo(0, bottomY + size * 0.03);
-	iconCtx.quadraticCurveTo(size * 0.12, bottomY + size * 0.2, 0, bottomY + size * 0.28);
-	iconCtx.quadraticCurveTo(-size * 0.12, bottomY + size * 0.2, 0, bottomY + size * 0.03);
-	iconCtx.closePath();
-	iconCtx.fillStyle = '#ffd074';
-	iconCtx.fill();
-
-	iconCtx.restore();
-
-	return iconCanvas;
-}
-
-function spawnSquares() {
-	squares = [];
-	let attempts = 0;
-	while (squares.length < 3 && attempts < 500) {
-		attempts++;
-		// Random position inside canvas
-		const sqX = Math.floor(Math.random() * (canvas.width - squareSize - 2 * radius)) + radius + 1;
-		const sqY = Math.floor(Math.random() * (canvas.height - squareSize - 2 * radius)) + radius + 1;
-		// Check if square collides with any wall
-		let collides = false;
-		for (const line of wallLines) {
-			// Check all 4 corners of the square
-			if (
-				circleIntersectsLine(sqX, sqY, squareSize / 2, line.x1, line.y1, line.x2, line.y2) ||
-				circleIntersectsLine(sqX + squareSize, sqY, squareSize / 2, line.x1, line.y1, line.x2, line.y2) ||
-				circleIntersectsLine(sqX, sqY + squareSize, squareSize / 2, line.x1, line.y1, line.x2, line.y2) ||
-				circleIntersectsLine(sqX + squareSize, sqY + squareSize, squareSize / 2, line.x1, line.y1, line.x2, line.y2)
-			) {
-				collides = true;
-				break;
-			}
-		}
-		if (!collides) {
-			// Also check not overlapping with other squares
-			let overlap = squares.some(sq => Math.abs(sq.x - sqX) < squareSize && Math.abs(sq.y - sqY) < squareSize);
-			if (!overlap) {
-				squares.push({ x: sqX, y: sqY });
-			}
-		}
+	function setMissionStatus(text) {
+		if (missionChip) missionChip.textContent = `Status: ${text}`;
 	}
-}
 
-function drawSquares() {
-	for (const sq of squares) {
-		ctx.save();
-		ctx.beginPath();
-		ctx.rect(sq.x, sq.y, squareSize, squareSize);
-		ctx.fillStyle = 'orange';
-		ctx.fill();
-		ctx.lineWidth = 2;
-		ctx.strokeStyle = '#b26500';
-		ctx.stroke();
-		ctx.restore();
+	function updateCollectChip() {
+		if (!coresEnabled) return;
 	}
-}
 
-	let timer = null;
-	let timeLeft = 120; // seconds
+	function stopCountdown() {
+		if (!timer) return;
+		clearInterval(timer);
+		timer = null;
+	}
+
+	function updateTimerDisplay() {
+		if (!timerDiv) return;
+		const min = Math.floor(timeLeft / 60);
+		const sec = (timeLeft % 60).toString().padStart(2, '0');
+		timerDiv.textContent = `Cas: ${min}:${sec}`;
+		timerDiv.classList.toggle('warning', timeLeft <= 20 && playing);
+	}
 
 	function startCountdown() {
-	timeLeft = 120;
-	let timerDiv = document.getElementById('timer-div');
-	if (timerDiv) timerDiv.style.display = 'block';
-	updateTimerDisplay();
-	if (timer) clearInterval(timer);
-	timer = setInterval(() => {
-		timeLeft--;
+		timeLeft = 120;
 		updateTimerDisplay();
-		if (timeLeft <= 0) {
-			clearInterval(timer);
-			timer = null;
+		stopCountdown();
+		timer = setInterval(() => {
+			timeLeft--;
+			updateTimerDisplay();
+			if (timeLeft > 0) return;
+
 			playing = false;
-			if (timerDiv) timerDiv.style.display = 'none';
-			clearCanvas(); // clear everything
+			stopCountdown();
+			clearCanvas();
+			setMissionStatus('Konec igre');
 			mazeAlert.fire({
 				icon: 'error',
 				title: 'Čas je potekel!',
-				text: 'Žal si izgubil igro.',
+				text: 'Nisi pravočasno prišel do izhoda.'
 			});
-		}
-	}, 1000);
-}
-
-	function updateTimerDisplay() {
-	  let timerDiv = document.getElementById('timer-div');
-	  if (!timerDiv) {
-	    timerDiv = document.createElement('div');
-	    timerDiv.id = 'timer-div';
-	    timerDiv.style.position = 'absolute';
-	    timerDiv.style.top = '60px';
-	    timerDiv.style.left = '20px';
-	    timerDiv.style.fontSize = '20px';
-	    timerDiv.style.fontWeight = 'bold';
-	    timerDiv.style.background = 'rgba(255,255,255,0.8)';
-	    timerDiv.style.padding = '6px 16px';
-	    timerDiv.style.borderRadius = '6px';
-	    timerDiv.style.zIndex = '10';
-	    document.body.appendChild(timerDiv);
-	  }
-	  const min = Math.floor(timeLeft / 60);
-	  const sec = (timeLeft % 60).toString().padStart(2, '0');
-	  timerDiv.textContent = `Čas: ${min}:${sec}`;
+		}, 1000);
 	}
 
-	function clearCanvas() {
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		// Redraw squares if playing
-		if (playing && squares.length > 0) {
-			drawSquares();
-		}
-	}
+	function createPlayerIcon(size) {
+		const iconCanvas = document.createElement('canvas');
+		iconCanvas.width = size;
+		iconCanvas.height = size;
+		const iconCtx = iconCanvas.getContext('2d');
+		const center = size / 2;
 
-	function drawCircle() {
-		clearCanvas();
-		// Draw squares first so circle is on top
-		if (playing && squares.length > 0) {
-			drawSquares();
-		}
-		const iconSize = playerIcon.width;
-		ctx.save();
-		ctx.shadowColor = 'rgba(16, 32, 58, 0.34)';
-		ctx.shadowBlur = 9;
-		ctx.drawImage(playerIcon, x - iconSize / 2, y - iconSize / 2);
-		ctx.restore();
+		iconCtx.save();
+		iconCtx.translate(center, center);
+
+		// Outer glow ring.
+		iconCtx.beginPath();
+		iconCtx.arc(0, 0, size * 0.46, 0, 2 * Math.PI);
+		iconCtx.fillStyle = 'rgba(70, 215, 255, 0.16)';
+		iconCtx.fill();
+
+		// Core hull.
+		iconCtx.beginPath();
+		iconCtx.arc(0, 0, size * 0.35, 0, 2 * Math.PI);
+		iconCtx.fillStyle = '#e9f8ff';
+		iconCtx.fill();
+		iconCtx.lineWidth = 1.2;
+		iconCtx.strokeStyle = '#4dd9ff';
+		iconCtx.stroke();
+
+		// Cockpit.
+		iconCtx.beginPath();
+		iconCtx.arc(0, -size * 0.07, size * 0.14, 0, 2 * Math.PI);
+		iconCtx.fillStyle = '#8ce6ff';
+		iconCtx.fill();
+		iconCtx.lineWidth = 1;
+		iconCtx.strokeStyle = '#0c6fad';
+		iconCtx.stroke();
+
+		// Side wings.
+		iconCtx.beginPath();
+		iconCtx.moveTo(-size * 0.12, size * 0.04);
+		iconCtx.lineTo(-size * 0.44, size * 0.19);
+		iconCtx.lineTo(-size * 0.12, size * 0.26);
+		iconCtx.closePath();
+		iconCtx.fillStyle = '#ff4f94';
+		iconCtx.fill();
+
+		iconCtx.beginPath();
+		iconCtx.moveTo(size * 0.12, size * 0.04);
+		iconCtx.lineTo(size * 0.44, size * 0.19);
+		iconCtx.lineTo(size * 0.12, size * 0.26);
+		iconCtx.closePath();
+		iconCtx.fillStyle = '#ff4f94';
+		iconCtx.fill();
+
+		// Center stripe.
+		iconCtx.beginPath();
+		iconCtx.moveTo(0, -size * 0.24);
+		iconCtx.lineTo(size * 0.07, size * 0.18);
+		iconCtx.lineTo(-size * 0.07, size * 0.18);
+		iconCtx.closePath();
+		iconCtx.fillStyle = '#46d7ff';
+		iconCtx.fill();
+
+		// Engine glow.
+		iconCtx.beginPath();
+		iconCtx.arc(0, size * 0.29, size * 0.12, 0, 2 * Math.PI);
+		iconCtx.fillStyle = '#ffe473';
+		iconCtx.fill();
+
+		iconCtx.beginPath();
+		iconCtx.arc(0, size * 0.32, size * 0.06, 0, 2 * Math.PI);
+		iconCtx.fillStyle = '#ff9b52';
+		iconCtx.fill();
+
+		// Small highlight.
+		iconCtx.beginPath();
+		iconCtx.arc(-size * 0.1, -size * 0.1, size * 0.05, 0, 2 * Math.PI);
+		iconCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+		iconCtx.fill();
+
+		iconCtx.restore();
+		return iconCanvas;
 	}
 
 	function circleIntersectsLine(cx, cy, r, x1, y1, x2, y2) {
-		// Find closest point on line segment to circle center
 		const dx = x2 - x1;
 		const dy = y2 - y1;
 		const lengthSq = dx * dx + dy * dy;
 		if (lengthSq === 0) return false;
+
 		let t = ((cx - x1) * dx + (cy - y1) * dy) / lengthSq;
 		t = Math.max(0, Math.min(1, t));
 		const closestX = x1 + t * dx;
 		const closestY = y1 + t * dy;
 		const distSq = (cx - closestX) * (cx - closestX) + (cy - closestY) * (cy - closestY);
-		return distSq <= (r + 1) * (r + 1); // +1 tolerance
+		return distSq <= (r + 1) * (r + 1);
 	}
 
 	function collidesWithWall(nx, ny) {
@@ -246,37 +186,185 @@ function drawSquares() {
 		return false;
 	}
 
+	function canPlaceCore(coreX, coreY) {
+		const coreRadius = squareSize / 2;
+		for (const line of wallLines) {
+			if (
+				circleIntersectsLine(coreX, coreY, coreRadius, line.x1, line.y1, line.x2, line.y2) ||
+				circleIntersectsLine(coreX + squareSize, coreY, coreRadius, line.x1, line.y1, line.x2, line.y2) ||
+				circleIntersectsLine(coreX, coreY + squareSize, coreRadius, line.x1, line.y1, line.x2, line.y2) ||
+				circleIntersectsLine(coreX + squareSize, coreY + squareSize, coreRadius, line.x1, line.y1, line.x2, line.y2)
+			) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function spawnSquares() {
+		if (!coresEnabled) {
+			squares = [];
+			return;
+		}
+		squares = [];
+		let attempts = 0;
+		while (squares.length < totalCores && attempts < 600) {
+			attempts++;
+			const sqX = Math.floor(Math.random() * (canvas.width - squareSize - 2 * radius)) + radius + 1;
+			const sqY = Math.floor(Math.random() * (canvas.height - squareSize - 2 * radius)) + radius + 1;
+
+			const tooCloseToStart = Math.abs(sqX - startPos.x) < 28 && Math.abs(sqY - startPos.y) < 28;
+			const tooCloseToExit = Math.abs(sqX - exitGate.x) < 24 && Math.abs(sqY - exitGate.y) < 24;
+			const overlap = squares.some((sq) => Math.abs(sq.x - sqX) < squareSize + 6 && Math.abs(sq.y - sqY) < squareSize + 6);
+
+			if (!tooCloseToStart && !tooCloseToExit && !overlap && canPlaceCore(sqX, sqY)) {
+				squares.push({ x: sqX, y: sqY, collected: false });
+			}
+		}
+
+		// Guaranteed fallback positions so collectibles are always present.
+		const fallbackSquares = [
+			{ x: 72, y: 104, collected: false },
+			{ x: 232, y: 214, collected: false },
+			{ x: 360, y: 360, collected: false }
+		];
+		for (const fallback of fallbackSquares) {
+			if (squares.length >= totalCores) break;
+			const overlap = squares.some((sq) => Math.abs(sq.x - fallback.x) < squareSize + 6 && Math.abs(sq.y - fallback.y) < squareSize + 6);
+			if (!overlap && canPlaceCore(fallback.x, fallback.y)) {
+				squares.push(fallback);
+			}
+		}
+	}
+
+	function drawSquares() {
+		if (!coresEnabled) return;
+		for (const sq of squares) {
+			if (sq.collected) continue;
+			const centerX = sq.x + squareSize / 2;
+			const centerY = sq.y + squareSize / 2;
+
+			ctx.save();
+			ctx.shadowColor = 'rgba(255, 198, 65, 0.8)';
+			ctx.shadowBlur = 14;
+			ctx.beginPath();
+			ctx.arc(centerX, centerY, squareSize * 0.45, 0, 2 * Math.PI);
+			ctx.fillStyle = '#ffd348';
+			ctx.fill();
+			ctx.lineWidth = 2.5;
+			ctx.strokeStyle = '#8a5600';
+			ctx.stroke();
+
+			ctx.beginPath();
+			ctx.arc(centerX - 3, centerY - 4, squareSize * 0.12, 0, 2 * Math.PI);
+			ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+			ctx.fill();
+			ctx.restore();
+		}
+	}
+
+	function drawExitGate() {
+		// Intentionally left blank: EXIT label is the only visible finish marker.
+	}
+
+	function clearCanvas() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		if (playing) {
+			drawExitGate();
+			drawSquares();
+		}
+	}
+
+	function drawCircle() {
+		clearCanvas();
+		const iconSize = playerIcon.width;
+		ctx.drawImage(playerIcon, x - iconSize / 2, y - iconSize / 2);
+	}
+
+	function checkCollectedCore() {
+		if (!coresEnabled) return;
+		for (const sq of squares) {
+			if (sq.collected) continue;
+			const cx = sq.x + squareSize / 2;
+			const cy = sq.y + squareSize / 2;
+			const dist = Math.hypot(cx - x, cy - y);
+			if (dist <= radius + squareSize * 0.55) {
+				sq.collected = true;
+				updateCollectChip();
+
+				const done = squares.every((item) => item.collected);
+				if (done) {
+					setMissionStatus('Pridi do izhoda');
+				}
+			}
+		}
+	}
+
+	function reachedExit() {
+		return Math.hypot(exitGate.x - x, exitGate.y - y) <= exitGate.r + radius + 1;
+	}
+
+	function failMission(title, text) {
+		playing = false;
+		stopCountdown();
+		clearCanvas();
+		setMissionStatus('Konec igre');
+		mazeAlert.fire({
+			icon: 'error',
+			title,
+			text
+		});
+	}
+
+	function completeMission() {
+		playing = false;
+		stopCountdown();
+		clearCanvas();
+		setMissionStatus('Zmaga!');
+		mazeAlert.fire({
+			icon: 'success',
+			title: 'Bravo!',
+			text: `Prišel si do izhoda v ${120 - timeLeft} sekundah.`
+		});
+	}
+
 	function move(dx, dy) {
 		const nx = x + dx;
 		const ny = y + dy;
-		// Clamp to canvas bounds
 		const clampedX = Math.max(radius, Math.min(canvas.width - radius, nx));
 		const clampedY = Math.max(radius, Math.min(canvas.height - radius, ny));
+
 		if (collidesWithWall(clampedX, clampedY)) {
-			// Stop and hide timer and player
-			if (timer) {
-				clearInterval(timer);
-				timer = null;
-			}
-			playing = false;
-			let timerDiv = document.getElementById('timer-div');
-			if (timerDiv) timerDiv.style.display = 'none';
-			clearCanvas(); // clear everything
-			mazeAlert.fire({
-				icon: 'error',
-				title: 'Ups!',
-				text: 'Zadel si zid!'
-			});
+			failMission('Crash!', 'Zadel si steno.');
 			return;
 		}
+
 		x = clampedX;
 		y = clampedY;
+		checkCollectedCore();
+
+		const allCollected = !coresEnabled || (squares.length > 0 && squares.every((sq) => sq.collected));
+		if (reachedExit() && allCollected) {
+			completeMission();
+			return;
+		}
+
+		if (coresEnabled && reachedExit() && !allCollected && !hintShown) {
+			setMissionStatus('Najprej izpolni cilj.');
+			hintShown = true;
+		}
+
 		drawCircle();
 	}
 
 	document.addEventListener('keydown', (e) => {
 		if (!playing) return;
-		switch (e.key.toLowerCase()) {
+
+		const key = e.key.toLowerCase();
+		if (!['w', 'a', 's', 'd'].includes(key)) return;
+		e.preventDefault();
+
+		switch (key) {
 			case 'w':
 				move(0, -speed);
 				break;
@@ -292,35 +380,44 @@ function drawSquares() {
 		}
 	});
 
-	// Hide player until play button is pressed
+	function startMission() {
+		playing = true;
+		hintShown = false;
+		x = startPos.x;
+		y = startPos.y;
+		spawnSquares();
+		updateCollectChip();
+		setMissionStatus('Pridi do izhoda');
+		startCountdown();
+		drawCircle();
+
+		const solutionLine = document.getElementById('solution-anim');
+		if (solutionLine) {
+			solutionLine.style.visibility = 'hidden';
+			solutionLine.style.animation = 'none';
+		}
+	}
+
+	function stopMissionForSolution() {
+		playing = false;
+		stopCountdown();
+		clearCanvas();
+		setMissionStatus('Prikaz rešitve');
+	}
+
 	clearCanvas();
+	updateCollectChip();
+	updateTimerDisplay();
+	setMissionStatus('Pripravljen');
 
 	const playBtn = document.getElementById('play-btn');
 	if (playBtn) {
-		playBtn.addEventListener('click', () => {
-			playing = true;
-			x = canvas.width / 2;
-			y = radius + 5;
-			clearCanvas();
-			drawCircle();
-			startCountdown();
-			spawnSquares();
-			drawSquares();
-			// Hide the solution line if visible
-			const solutionLine = document.getElementById('solution-anim');
-			if (solutionLine) {
-				solutionLine.style.visibility = 'hidden';
-				solutionLine.style.animation = 'none';
-			}
-		});
+		playBtn.addEventListener('click', startMission);
 	}
 
 	const resitevBtn = document.getElementById('start-btn');
 	if (resitevBtn) {
-		resitevBtn.addEventListener('click', () => {
-			playing = false;
-			clearCanvas();
-		});
+		resitevBtn.addEventListener('click', stopMissionForSolution);
 	}
 });
 
