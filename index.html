@@ -1,24 +1,48 @@
 <!DOCTYPE html>
 
 <head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Labirint</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Bungee:wght@400&family=Chakra+Petch:wght@400;600;700&display=swap"
+		rel="stylesheet">
 	<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-	<button id="start-btn" class="start-button">rešitev</button>
-	<button id="play-btn" class="start-button" style="left: 120px;">Igraj</button>
-	<div class="svg-canvas-container">
-		<svg class="maze-svg" width="484" height="484" viewBox="0 0 484 484" version="1.1"
-			xmlns="http://www.w3.org/2000/svg">
-			<image href="slike/maze.svg" width="484" height="484" />
-		</svg>
-		<canvas id="maze-canvas" width="484" height="484" class="maze-canvas"></canvas>
-	</div>
-</body>
+	<div class="bg-orb orb-a"></div>
+	<div class="bg-orb orb-b"></div>
+	<div class="bg-orb orb-c"></div>
+	<main class="game-shell">
+		<header class="top-bar">
+			<div>
+				<p class="eyebrow">Arcade Challenge</p>
+				<h1 class="title">LABIRINT</h1>
+				<p class="subtitle">Premikanje: W A S D</p>
+			</div>
+			<div class="button-row">
+				<button id="play-btn" class="start-button">Igraj</button>
+				<button id="start-btn" class="start-button secondary">Rešitev</button>
+			</div>
+		</header>
+		<div class="meta-row">
+			<div id="timer-div" class="timer-chip">Cas: 0:00</div>
+			<div class="meta-chip">Cilj: ne zadeni zidu</div>
+		</div>
+		<div class="svg-canvas-container">
+			<svg class="maze-svg" width="484" height="484" viewBox="0 0 484 484" version="1.1"
+				xmlns="http://www.w3.org/2000/svg">
+				<image href="slike/maze.svg" width="484" height="484" />
+			</svg>
+			<canvas id="maze-canvas" width="484" height="484" class="maze-canvas"></canvas>
+		</div>
+	</main>
 	<!-- SweetAlert2 CDN -->
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/LineDraw.js"></script>
 <script src="js/Play.js"></script>
+</body>
 
 </html>
