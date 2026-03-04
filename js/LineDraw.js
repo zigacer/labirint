@@ -12,7 +12,7 @@ const svg = document.querySelector('svg');
 const solutionLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
 solutionLine.setAttribute('id', 'solution-anim');
 solutionLine.setAttribute('fill', 'none');
-solutionLine.setAttribute('stroke', '#ff0000');
+solutionLine.setAttribute('stroke', '#ff4f94');
 solutionLine.setAttribute('stroke-width', '2');
 solutionLine.setAttribute('stroke-linecap', 'square');
 solutionLine.setAttribute('stroke-linejoin', 'round');
