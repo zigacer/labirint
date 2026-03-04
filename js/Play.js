@@ -3,13 +3,109 @@ document.addEventListener('DOMContentLoaded', () => {
 	const canvas = document.getElementById('maze-canvas');
 	if (!canvas) return;
 	const ctx = canvas.getContext('2d');
-	const radius = 3;
+	const radius = 4;
 	let x = canvas.width / 2;
 	let y = radius + 5; // Start near the top center
 	const speed = 4;
 	let playing = false;
+	const playerIcon = createPlayerIcon(radius * 2 + 1);
+	const mazeAlert = Swal.mixin({
+		heightAuto: false,
+		background: '#fff4dc',
+		color: '#10203a',
+		confirmButtonText: 'V redu',
+		buttonsStyling: false,
+		customClass: {
+			popup: 'maze-alert-popup',
+			title: 'maze-alert-title',
+			htmlContainer: 'maze-alert-text',
+			confirmButton: 'maze-alert-confirm'
+		}
+	});
 let squares = [];
 const squareSize = 16;
+
+function createPlayerIcon(size) {
+	const iconCanvas = document.createElement('canvas');
+	iconCanvas.width = size;
+	iconCanvas.height = size;
+	const iconCtx = iconCanvas.getContext('2d');
+	const center = size / 2;
+	const bodyW = size * 0.36;
+	const bodyH = size * 0.52;
+	const topY = center - bodyH * 0.58;
+	const bottomY = center + bodyH * 0.52;
+
+	iconCtx.save();
+	iconCtx.translate(center, center);
+
+	// Badge shadow.
+	iconCtx.beginPath();
+	iconCtx.arc(0, 0, size * 0.44, 0, 2 * Math.PI);
+	iconCtx.fillStyle = 'rgba(16, 32, 58, 0.22)';
+	iconCtx.fill();
+
+	// Outer badge.
+	iconCtx.beginPath();
+	iconCtx.arc(0, 0, size * 0.4, 0, 2 * Math.PI);
+	iconCtx.fillStyle = '#00a6a6';
+	iconCtx.fill();
+	iconCtx.lineWidth = 1.8;
+	iconCtx.strokeStyle = '#015b5b';
+	iconCtx.stroke();
+
+	// Rocket body.
+	iconCtx.beginPath();
+	iconCtx.moveTo(0, topY);
+	iconCtx.quadraticCurveTo(bodyW, center - bodyH * 0.15, bodyW * 0.5, bottomY);
+	iconCtx.lineTo(-bodyW * 0.5, bottomY);
+	iconCtx.quadraticCurveTo(-bodyW, center - bodyH * 0.15, 0, topY);
+	iconCtx.closePath();
+	iconCtx.fillStyle = '#fff4dc';
+	iconCtx.fill();
+	iconCtx.lineWidth = 1.4;
+	iconCtx.strokeStyle = '#ff8c4a';
+	iconCtx.stroke();
+
+	// Window.
+	iconCtx.beginPath();
+	iconCtx.arc(0, center - bodyH * 0.1, size * 0.1, 0, 2 * Math.PI);
+	iconCtx.fillStyle = '#57c7ff';
+	iconCtx.fill();
+	iconCtx.strokeStyle = '#1f4b7a';
+	iconCtx.lineWidth = 1;
+	iconCtx.stroke();
+
+	// Fins.
+	iconCtx.beginPath();
+	iconCtx.moveTo(-bodyW * 0.45, center + bodyH * 0.18);
+	iconCtx.lineTo(-bodyW * 0.95, center + bodyH * 0.35);
+	iconCtx.lineTo(-bodyW * 0.42, center + bodyH * 0.42);
+	iconCtx.closePath();
+	iconCtx.fillStyle = '#ff5b2e';
+	iconCtx.fill();
+
+	iconCtx.beginPath();
+	iconCtx.moveTo(bodyW * 0.45, center + bodyH * 0.18);
+	iconCtx.lineTo(bodyW * 0.95, center + bodyH * 0.35);
+	iconCtx.lineTo(bodyW * 0.42, center + bodyH * 0.42);
+	iconCtx.closePath();
+	iconCtx.fillStyle = '#ff5b2e';
+	iconCtx.fill();
+
+	// Flame.
+	iconCtx.beginPath();
+	iconCtx.moveTo(0, bottomY + size * 0.03);
+	iconCtx.quadraticCurveTo(size * 0.12, bottomY + size * 0.2, 0, bottomY + size * 0.28);
+	iconCtx.quadraticCurveTo(-size * 0.12, bottomY + size * 0.2, 0, bottomY + size * 0.03);
+	iconCtx.closePath();
+	iconCtx.fillStyle = '#ffd074';
+	iconCtx.fill();
+
+	iconCtx.restore();
+
+	return iconCanvas;
+}
 
 function spawnSquares() {
 	squares = [];
@@ -61,7 +157,7 @@ function drawSquares() {
 	let timeLeft = 120; // seconds
 
 	function startCountdown() {
-	timeLeft = 10;
+	timeLeft = 120;
 	let timerDiv = document.getElementById('timer-div');
 	if (timerDiv) timerDiv.style.display = 'block';
 	updateTimerDisplay();
@@ -75,12 +171,10 @@ function drawSquares() {
 			playing = false;
 			if (timerDiv) timerDiv.style.display = 'none';
 			clearCanvas(); // clear everything
-			Swal.fire({
-				heightAuto: false,
+			mazeAlert.fire({
 				icon: 'error',
 				title: 'Čas je potekel!',
 				text: 'Žal si izgubil igro.',
-				confirmButtonText: 'V redu'
 			});
 		}
 	}, 1000);
@@ -121,13 +215,12 @@ function drawSquares() {
 		if (playing && squares.length > 0) {
 			drawSquares();
 		}
-		ctx.beginPath();
-		ctx.arc(x, y, radius, 0, 2 * Math.PI);
-		ctx.fillStyle = '#ff0000'; // Red fill
-		ctx.fill();
-		ctx.strokeStyle = '#b20000'; // Darker red stroke
-		ctx.lineWidth = 2;
-		ctx.stroke();
+		const iconSize = playerIcon.width;
+		ctx.save();
+		ctx.shadowColor = 'rgba(16, 32, 58, 0.34)';
+		ctx.shadowBlur = 9;
+		ctx.drawImage(playerIcon, x - iconSize / 2, y - iconSize / 2);
+		ctx.restore();
 	}
 
 	function circleIntersectsLine(cx, cy, r, x1, y1, x2, y2) {
@@ -169,8 +262,7 @@ function drawSquares() {
 			let timerDiv = document.getElementById('timer-div');
 			if (timerDiv) timerDiv.style.display = 'none';
 			clearCanvas(); // clear everything
-			Swal.fire({
-				heightAuto: false,
+			mazeAlert.fire({
 				icon: 'error',
 				title: 'Oops!',
 				text: 'You hit a wall!'
