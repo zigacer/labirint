@@ -264,8 +264,8 @@ function drawSquares() {
 			clearCanvas(); // clear everything
 			mazeAlert.fire({
 				icon: 'error',
-				title: 'Oops!',
-				text: 'You hit a wall!'
+				title: 'Ups!',
+				text: 'Zadel si zid!'
 			});
 			return;
 		}
@@ -738,4 +738,5 @@ const wallLines = [
 	{ x1: 466, y1: 450, x2: 466, y2: 466 },
 	{ x1: 482, y1: 2, x2: 482, y2: 482 },
 ];
+
 
