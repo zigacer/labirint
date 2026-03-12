@@ -1,18 +1,23 @@
 // Play.js: WASD movement with mission objectives.
-document.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener('DOMContentLoaded', function() {
 	const canvas = document.getElementById('maze-canvas');
 	if (!canvas) return;
+
+	const solutionPoints = [
+  [234,2],[234,10],[202,10],[202,26],[282,26],[282,42],[298,42],[298,58],[282,58],[282,74],[266,74],[266,90],[250,90],[250,138],[234,138],[234,154],[218,154],[218,122],[234,122],[234,90],[218,90],[218,106],[202,106],[202,186],[186,186],[186,202],[170,202],[170,170],[186,170],[186,154],[170,154],[170,138],[122,138],[122,170],[106,170],[106,186],[122,186],[122,234],[106,234],[106,218],[90,218],[90,202],[74,202],[74,218],[58,218],[58,282],[106,282],[106,298],[122,298],[122,314],[106,314],[106,330],[122,330],[122,346],[106,346],[106,362],[90,362],[90,394],[74,394],[74,410],[106,410],[106,426],[138,426],[138,474],[154,474],[154,458],[170,458],[170,474],[186,474],[186,410],[202,410],[202,442],[234,442],[234,474],[250,474],[250,482]
+	];
 
 	const ctx = canvas.getContext('2d');
 	ctx.imageSmoothingEnabled = false;
 	const timerDiv = document.getElementById('timer-div');
 	const missionChip = document.getElementById('mission-chip');
+	const enemiesChip = document.getElementById('enemies-chip');
 	const coresEnabled = false;
 
 	const radius = 3;
 	const speed = 4;
-	const squareSize = 22;
-	const totalCores = coresEnabled ? 3 : 0;
+	const totalEnemies = 3;
 	const startPos = { x: canvas.width / 2, y: radius + 5 };
 	const exitGate = { x: canvas.width / 2, y: canvas.height - 7, r: 10 };
 
@@ -21,8 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	let playing = false;
 	let timer = null;
 	let timeLeft = 120;
-	let squares = [];
 	let hintShown = false;
+	let enemies = [];
+	let enemiesKilled = 0;
+	let nearEnemy = null;
 
 	const playerIcon = createPlayerIcon(15);
 	const mazeAlert = Swal.mixin({
@@ -43,8 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (missionChip) missionChip.textContent = `Status: ${text}`;
 	}
 
-	function updateCollectChip() {
-		if (!coresEnabled) return;
+	function updateEnemiesChip() {
+		if (enemiesChip) enemiesChip.textContent = `Sovražniki: ${enemiesKilled}/${totalEnemies}`;
 	}
 
 	function stopCountdown() {
@@ -65,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		timeLeft = 120;
 		updateTimerDisplay();
 		stopCountdown();
-		timer = setInterval(() => {
+		timer = setInterval(function() {
 			timeLeft--;
 			updateTimerDisplay();
 			if (timeLeft > 0) return;
@@ -92,13 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		iconCtx.save();
 		iconCtx.translate(center, center);
 
-		// Outer glow ring.
 		iconCtx.beginPath();
 		iconCtx.arc(0, 0, size * 0.46, 0, 2 * Math.PI);
 		iconCtx.fillStyle = 'rgba(70, 215, 255, 0.16)';
 		iconCtx.fill();
 
-		// Core hull.
 		iconCtx.beginPath();
 		iconCtx.arc(0, 0, size * 0.35, 0, 2 * Math.PI);
 		iconCtx.fillStyle = '#e9f8ff';
@@ -107,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		iconCtx.strokeStyle = '#4dd9ff';
 		iconCtx.stroke();
 
-		// Cockpit.
 		iconCtx.beginPath();
 		iconCtx.arc(0, -size * 0.07, size * 0.14, 0, 2 * Math.PI);
 		iconCtx.fillStyle = '#8ce6ff';
@@ -116,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		iconCtx.strokeStyle = '#0c6fad';
 		iconCtx.stroke();
 
-		// Side wings.
 		iconCtx.beginPath();
 		iconCtx.moveTo(-size * 0.12, size * 0.04);
 		iconCtx.lineTo(-size * 0.44, size * 0.19);
@@ -133,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		iconCtx.fillStyle = '#ff4f94';
 		iconCtx.fill();
 
-		// Center stripe.
 		iconCtx.beginPath();
 		iconCtx.moveTo(0, -size * 0.24);
 		iconCtx.lineTo(size * 0.07, size * 0.18);
@@ -142,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		iconCtx.fillStyle = '#46d7ff';
 		iconCtx.fill();
 
-		// Engine glow.
 		iconCtx.beginPath();
 		iconCtx.arc(0, size * 0.29, size * 0.12, 0, 2 * Math.PI);
 		iconCtx.fillStyle = '#ffe473';
@@ -153,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		iconCtx.fillStyle = '#ff9b52';
 		iconCtx.fill();
 
-		// Small highlight.
 		iconCtx.beginPath();
 		iconCtx.arc(-size * 0.1, -size * 0.1, size * 0.05, 0, 2 * Math.PI);
 		iconCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -186,92 +186,81 @@ document.addEventListener('DOMContentLoaded', () => {
 		return false;
 	}
 
-	function canPlaceCore(coreX, coreY) {
-		const coreRadius = squareSize / 2;
-		for (const line of wallLines) {
-			if (
-				circleIntersectsLine(coreX, coreY, coreRadius, line.x1, line.y1, line.x2, line.y2) ||
-				circleIntersectsLine(coreX + squareSize, coreY, coreRadius, line.x1, line.y1, line.x2, line.y2) ||
-				circleIntersectsLine(coreX, coreY + squareSize, coreRadius, line.x1, line.y1, line.x2, line.y2) ||
-				circleIntersectsLine(coreX + squareSize, coreY + squareSize, coreRadius, line.x1, line.y1, line.x2, line.y2)
-			) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	function spawnSquares() {
-		if (!coresEnabled) {
-			squares = [];
-			return;
-		}
-		squares = [];
+	function spawnEnemies() {
+		enemies = [];
 		let attempts = 0;
-		while (squares.length < totalCores && attempts < 600) {
+		const minDistance = 80;
+
+		while (enemies.length < totalEnemies && attempts < 300) {
 			attempts++;
-			const sqX = Math.floor(Math.random() * (canvas.width - squareSize - 2 * radius)) + radius + 1;
-			const sqY = Math.floor(Math.random() * (canvas.height - squareSize - 2 * radius)) + radius + 1;
+			const randomIndex = Math.floor(Math.random() * solutionPoints.length);
+			const pathPoint = solutionPoints[randomIndex];
+			
+			const enemyX = pathPoint[0];
+			const enemyY = pathPoint[1];
 
-			const tooCloseToStart = Math.abs(sqX - startPos.x) < 28 && Math.abs(sqY - startPos.y) < 28;
-			const tooCloseToExit = Math.abs(sqX - exitGate.x) < 24 && Math.abs(sqY - exitGate.y) < 24;
-			const overlap = squares.some((sq) => Math.abs(sq.x - sqX) < squareSize + 6 && Math.abs(sq.y - sqY) < squareSize + 6);
+			const clampedX = Math.max(20, Math.min(canvas.width - 20, enemyX));
+			const clampedY = Math.max(20, Math.min(canvas.height - 20, enemyY));
 
-			if (!tooCloseToStart && !tooCloseToExit && !overlap && canPlaceCore(sqX, sqY)) {
-				squares.push({ x: sqX, y: sqY, collected: false });
-			}
-		}
+			const distFromStart = Math.hypot(clampedX - startPos.x, clampedY - startPos.y);
+			const distFromExit = Math.hypot(clampedX - exitGate.x, clampedY - exitGate.y);
 
-		// Guaranteed fallback positions so collectibles are always present.
-		const fallbackSquares = [
-			{ x: 72, y: 104, collected: false },
-			{ x: 232, y: 214, collected: false },
-			{ x: 360, y: 360, collected: false }
-		];
-		for (const fallback of fallbackSquares) {
-			if (squares.length >= totalCores) break;
-			const overlap = squares.some((sq) => Math.abs(sq.x - fallback.x) < squareSize + 6 && Math.abs(sq.y - fallback.y) < squareSize + 6);
-			if (!overlap && canPlaceCore(fallback.x, fallback.y)) {
-				squares.push(fallback);
+			const overlap = enemies.some(function(e) { return Math.hypot(e.x - clampedX, e.y - clampedY) < minDistance; });
+
+			if (distFromStart > 50 && distFromExit > 50 && !overlap) {
+				enemies.push({ x: clampedX, y: clampedY, killed: false });
 			}
 		}
 	}
 
-	function drawSquares() {
-		if (!coresEnabled) return;
-		for (const sq of squares) {
-			if (sq.collected) continue;
-			const centerX = sq.x + squareSize / 2;
-			const centerY = sq.y + squareSize / 2;
+	function drawEnemies() {
+		for (const enemy of enemies) {
+			if (enemy.killed) continue;
 
+			const enemyRadius = 5;
 			ctx.save();
-			ctx.shadowColor = 'rgba(255, 198, 65, 0.8)';
-			ctx.shadowBlur = 14;
+
+			ctx.shadowColor = 'rgba(255, 79, 148, 0.8)';
+			ctx.shadowBlur = 12;
 			ctx.beginPath();
-			ctx.arc(centerX, centerY, squareSize * 0.45, 0, 2 * Math.PI);
-			ctx.fillStyle = '#ffd348';
+			ctx.arc(enemy.x, enemy.y, enemyRadius, 0, 2 * Math.PI);
+			ctx.fillStyle = '#ff4f94';
 			ctx.fill();
-			ctx.lineWidth = 2.5;
-			ctx.strokeStyle = '#8a5600';
+
+			ctx.lineWidth = 1.5;
+			ctx.strokeStyle = '#ff9aca';
 			ctx.stroke();
 
 			ctx.beginPath();
-			ctx.arc(centerX - 3, centerY - 4, squareSize * 0.12, 0, 2 * Math.PI);
-			ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+			ctx.arc(enemy.x - 1.5, enemy.y - 1, 1.2, 0, 2 * Math.PI);
+			ctx.fillStyle = '#fff';
 			ctx.fill();
+
 			ctx.restore();
 		}
 	}
 
+	function checkEnemyCollision() {
+		for (const enemy of enemies) {
+			if (enemy.killed) continue;
+			const dist = Math.hypot(enemy.x - x, enemy.y - y);
+			if (dist <= radius + 5) {
+				nearEnemy = enemy;
+				return true;
+			}
+		}
+		nearEnemy = null;
+		return false;
+	}
+
 	function drawExitGate() {
-		// Intentionally left blank: EXIT label is the only visible finish marker.
 	}
 
 	function clearCanvas() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		if (playing) {
 			drawExitGate();
-			drawSquares();
+			drawEnemies();
 		}
 	}
 
@@ -279,25 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		clearCanvas();
 		const iconSize = playerIcon.width;
 		ctx.drawImage(playerIcon, x - iconSize / 2, y - iconSize / 2);
-	}
-
-	function checkCollectedCore() {
-		if (!coresEnabled) return;
-		for (const sq of squares) {
-			if (sq.collected) continue;
-			const cx = sq.x + squareSize / 2;
-			const cy = sq.y + squareSize / 2;
-			const dist = Math.hypot(cx - x, cy - y);
-			if (dist <= radius + squareSize * 0.55) {
-				sq.collected = true;
-				updateCollectChip();
-
-				const done = squares.every((item) => item.collected);
-				if (done) {
-					setMissionStatus('Pridi do izhoda');
-				}
-			}
-		}
 	}
 
 	function reachedExit() {
@@ -335,32 +305,38 @@ document.addEventListener('DOMContentLoaded', () => {
 		const clampedY = Math.max(radius, Math.min(canvas.height - radius, ny));
 
 		if (collidesWithWall(clampedX, clampedY)) {
-			failMission('Crash!', 'Zadel si steno.');
 			return;
 		}
 
 		x = clampedX;
 		y = clampedY;
-		checkCollectedCore();
+		checkEnemyCollision();
 
-		const allCollected = !coresEnabled || (squares.length > 0 && squares.every((sq) => sq.collected));
-		if (reachedExit() && allCollected) {
+		if (reachedExit()) {
 			completeMission();
 			return;
-		}
-
-		if (coresEnabled && reachedExit() && !allCollected && !hintShown) {
-			setMissionStatus('Najprej izpolni cilj.');
-			hintShown = true;
 		}
 
 		drawCircle();
 	}
 
-	document.addEventListener('keydown', (e) => {
+	document.addEventListener('keydown', function(e) {
 		if (!playing) return;
 
 		const key = e.key.toLowerCase();
+		
+		if (key === ' ') {
+			e.preventDefault();
+			if (nearEnemy && !nearEnemy.killed) {
+				nearEnemy.killed = true;
+				enemiesKilled++;
+				updateEnemiesChip();
+				nearEnemy = null;
+				drawCircle();
+			}
+			return;
+		}
+
 		if (!['w', 'a', 's', 'd'].includes(key)) return;
 		e.preventDefault();
 
@@ -385,8 +361,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		hintShown = false;
 		x = startPos.x;
 		y = startPos.y;
-		spawnSquares();
-		updateCollectChip();
+		enemiesKilled = 0;
+		spawnEnemies();
+		updateEnemiesChip();
 		setMissionStatus('Pridi do izhoda');
 		startCountdown();
 		drawCircle();
@@ -406,18 +383,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	clearCanvas();
-	updateCollectChip();
+	updateEnemiesChip();
 	updateTimerDisplay();
 	setMissionStatus('Pripravljen');
 
 	const playBtn = document.getElementById('play-btn');
 	if (playBtn) {
-		playBtn.addEventListener('click', startMission);
+		playBtn.addEventListener('click', function() { startMission(); });
 	}
 
 	const resitevBtn = document.getElementById('start-btn');
 	if (resitevBtn) {
-		resitevBtn.addEventListener('click', stopMissionForSolution);
+		resitevBtn.addEventListener('click', function() { stopMissionForSolution(); });
 	}
 });
 
