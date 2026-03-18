@@ -26,23 +26,29 @@ solutionLine.style.strokeDasharray = length;
 solutionLine.style.strokeDashoffset = length;
 solutionLine.style.visibility = 'hidden';
 
+let lineVisible = false;
 
 startBtn.addEventListener('click', () => {
-  
-  solutionLine.style.animation = 'none';
-  
-  if (solutionLine.parentNode) {
-    solutionLine.parentNode.removeChild(solutionLine);
-    svg.appendChild(solutionLine);
+  if (lineVisible) {
+    solutionLine.style.animation = 'none';
+    solutionLine.style.visibility = 'hidden';
+    solutionLine.style.strokeDashoffset = length;
+    lineVisible = false;
+  } else {
+    solutionLine.style.animation = 'none';
+    
+    if (solutionLine.parentNode) {
+      solutionLine.parentNode.removeChild(solutionLine);
+      svg.appendChild(solutionLine);
+    }
+    solutionLine.style.strokeDashoffset = length;
+    solutionLine.style.visibility = 'visible';
+    void solutionLine.offsetWidth;
+    solutionLine.style.animation = 'draw-line 10s linear forwards';
+    lineVisible = true;
   }
-  solutionLine.style.strokeDashoffset = length;
-  solutionLine.style.visibility = 'visible';
-  void solutionLine.offsetWidth;
-  solutionLine.style.animation = 'draw-line 10s linear forwards';
 });
 
 solutionLine.addEventListener('animationend', () => {
-  solutionLine.style.visibility = 'hidden';
-  solutionLine.style.animation = 'none';
-  solutionLine.style.strokeDashoffset = length;
+  isAnimating = false;
 });

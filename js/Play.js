@@ -1,5 +1,3 @@
-// Play.js: WASD movement with mission objectives.
-
 document.addEventListener('DOMContentLoaded', function() {
 	const canvas = document.getElementById('maze-canvas');
 	if (!canvas) return;
@@ -13,6 +11,8 @@ document.addEventListener('DOMContentLoaded', function() {
 	const timerDiv = document.getElementById('timer-div');
 	const missionChip = document.getElementById('mission-chip');
 	const enemiesChip = document.getElementById('enemies-chip');
+	const proximityHint = document.getElementById('proximity-hint');
+	const explosionSound = document.getElementById('explosion-sound');
 	const coresEnabled = false;
 
 	const radius = 3;
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	let x = startPos.x;
 	let y = startPos.y;
+	let playerDirection = 0;
 	let playing = false;
 	let timer = null;
 	let timeLeft = 120;
@@ -64,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		if (!timerDiv) return;
 		const min = Math.floor(timeLeft / 60);
 		const sec = (timeLeft % 60).toString().padStart(2, '0');
-		timerDiv.textContent = `Cas: ${min}:${sec}`;
+		timerDiv.textContent = `Čas: ${min}:${sec}`;
 		timerDiv.classList.toggle('warning', timeLeft <= 20 && playing);
 	}
 
@@ -100,20 +101,26 @@ document.addEventListener('DOMContentLoaded', function() {
 		iconCtx.translate(center, center);
 
 		iconCtx.beginPath();
-		iconCtx.arc(0, 0, size * 0.46, 0, 2 * Math.PI);
-		iconCtx.fillStyle = 'rgba(70, 215, 255, 0.16)';
+		iconCtx.rect(-size * 0.15, -size * 0.1, size * 0.3, size * 0.35);
+		iconCtx.fillStyle = '#46d7ff';
 		iconCtx.fill();
-
-		iconCtx.beginPath();
-		iconCtx.arc(0, 0, size * 0.35, 0, 2 * Math.PI);
-		iconCtx.fillStyle = '#e9f8ff';
-		iconCtx.fill();
-		iconCtx.lineWidth = 1.2;
-		iconCtx.strokeStyle = '#4dd9ff';
+		iconCtx.lineWidth = 1.5;
+		iconCtx.strokeStyle = '#ffffff';
 		iconCtx.stroke();
 
 		iconCtx.beginPath();
-		iconCtx.arc(0, -size * 0.07, size * 0.14, 0, 2 * Math.PI);
+		iconCtx.moveTo(-size * 0.15, -size * 0.1);
+		iconCtx.lineTo(0, -size * 0.35);
+		iconCtx.lineTo(size * 0.15, -size * 0.1);
+		iconCtx.closePath();
+		iconCtx.fillStyle = '#ff4f94';
+		iconCtx.fill();
+		iconCtx.lineWidth = 1.5;
+		iconCtx.strokeStyle = '#ffffff';
+		iconCtx.stroke();
+
+		iconCtx.beginPath();
+		iconCtx.arc(0, -size * 0.02, size * 0.08, 0, 2 * Math.PI);
 		iconCtx.fillStyle = '#8ce6ff';
 		iconCtx.fill();
 		iconCtx.lineWidth = 1;
@@ -121,67 +128,61 @@ document.addEventListener('DOMContentLoaded', function() {
 		iconCtx.stroke();
 
 		iconCtx.beginPath();
-		iconCtx.moveTo(-size * 0.12, size * 0.04);
-		iconCtx.lineTo(-size * 0.44, size * 0.19);
-		iconCtx.lineTo(-size * 0.12, size * 0.26);
+		iconCtx.moveTo(-size * 0.15, size * 0.15);
+		iconCtx.lineTo(-size * 0.3, size * 0.25);
+		iconCtx.lineTo(-size * 0.15, size * 0.25);
 		iconCtx.closePath();
-		iconCtx.fillStyle = '#ff4f94';
+		iconCtx.fillStyle = '#53f2b6';
 		iconCtx.fill();
+		iconCtx.lineWidth = 1;
+		iconCtx.strokeStyle = '#ffffff';
+		iconCtx.stroke();
 
 		iconCtx.beginPath();
-		iconCtx.moveTo(size * 0.12, size * 0.04);
-		iconCtx.lineTo(size * 0.44, size * 0.19);
-		iconCtx.lineTo(size * 0.12, size * 0.26);
+		iconCtx.moveTo(size * 0.15, size * 0.15);
+		iconCtx.lineTo(size * 0.3, size * 0.25);
+		iconCtx.lineTo(size * 0.15, size * 0.25);
 		iconCtx.closePath();
-		iconCtx.fillStyle = '#ff4f94';
+		iconCtx.fillStyle = '#53f2b6';
 		iconCtx.fill();
+		iconCtx.lineWidth = 1;
+		iconCtx.strokeStyle = '#ffffff';
+		iconCtx.stroke();
 
 		iconCtx.beginPath();
-		iconCtx.moveTo(0, -size * 0.24);
-		iconCtx.lineTo(size * 0.07, size * 0.18);
-		iconCtx.lineTo(-size * 0.07, size * 0.18);
+		iconCtx.moveTo(-size * 0.1, size * 0.25);
+		iconCtx.lineTo(size * 0.1, size * 0.25);
+		iconCtx.lineTo(size * 0.05, size * 0.38);
+		iconCtx.lineTo(-size * 0.05, size * 0.38);
 		iconCtx.closePath();
-		iconCtx.fillStyle = '#46d7ff';
-		iconCtx.fill();
-
-		iconCtx.beginPath();
-		iconCtx.arc(0, size * 0.29, size * 0.12, 0, 2 * Math.PI);
 		iconCtx.fillStyle = '#ffe473';
 		iconCtx.fill();
 
 		iconCtx.beginPath();
-		iconCtx.arc(0, size * 0.32, size * 0.06, 0, 2 * Math.PI);
+		iconCtx.moveTo(-size * 0.05, size * 0.28);
+		iconCtx.lineTo(size * 0.05, size * 0.28);
+		iconCtx.lineTo(0, size * 0.35);
+		iconCtx.closePath();
 		iconCtx.fillStyle = '#ff9b52';
-		iconCtx.fill();
-
-		iconCtx.beginPath();
-		iconCtx.arc(-size * 0.1, -size * 0.1, size * 0.05, 0, 2 * Math.PI);
-		iconCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
 		iconCtx.fill();
 
 		iconCtx.restore();
 		return iconCanvas;
 	}
 
-	function circleIntersectsLine(cx, cy, r, x1, y1, x2, y2) {
-		const dx = x2 - x1;
-		const dy = y2 - y1;
-		const lengthSq = dx * dx + dy * dy;
-		if (lengthSq === 0) return false;
-
-		let t = ((cx - x1) * dx + (cy - y1) * dy) / lengthSq;
-		t = Math.max(0, Math.min(1, t));
-		const closestX = x1 + t * dx;
-		const closestY = y1 + t * dy;
-		const distSq = (cx - closestX) * (cx - closestX) + (cy - closestY) * (cy - closestY);
-		return distSq <= (r + 1) * (r + 1);
-	}
-
 	function collidesWithWall(nx, ny) {
 		for (const line of wallLines) {
-			if (circleIntersectsLine(nx, ny, radius, line.x1, line.y1, line.x2, line.y2)) {
-				return true;
-			}
+			const dx = line.x2 - line.x1;
+			const dy = line.y2 - line.y1;
+			const len = dx * dx + dy * dy;
+			if (len === 0) continue;
+
+			let t = ((nx - line.x1) * dx + (ny - line.y1) * dy) / len;
+			t = Math.max(0, Math.min(1, t));
+			const closestX = line.x1 + t * dx;
+			const closestY = line.y1 + t * dy;
+			const distSq = (nx - closestX) ** 2 + (ny - closestY) ** 2;
+			if (distSq < (radius + 1) ** 2) return true;
 		}
 		return false;
 	}
@@ -217,24 +218,67 @@ document.addEventListener('DOMContentLoaded', function() {
 		for (const enemy of enemies) {
 			if (enemy.killed) continue;
 
-			const enemyRadius = 5;
 			ctx.save();
 
-			ctx.shadowColor = 'rgba(255, 79, 148, 0.8)';
-			ctx.shadowBlur = 12;
+			ctx.shadowColor = 'rgba(76, 255, 150, 0.6)';
+			ctx.shadowBlur = 15;
+
+			const ex = enemy.x;
+			const ey = enemy.y;
+			const scale = 1.2;
+
+			ctx.fillStyle = '#4cff96';
 			ctx.beginPath();
-			ctx.arc(enemy.x, enemy.y, enemyRadius, 0, 2 * Math.PI);
-			ctx.fillStyle = '#ff4f94';
+			ctx.ellipse(ex, ey - 1, 4.5 * scale, 5.5 * scale, 0, 0, 2 * Math.PI);
+			ctx.fill();
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = '#ffffff';
+			ctx.stroke();
+
+			ctx.fillStyle = '#000000';
+			ctx.beginPath();
+			ctx.ellipse(ex - 2.5, ey - 2, 1.5, 2, -0.3, 0, 2 * Math.PI);
 			ctx.fill();
 
-			ctx.lineWidth = 1.5;
-			ctx.strokeStyle = '#ff9aca';
+			ctx.beginPath();
+			ctx.ellipse(ex + 2.5, ey - 2, 1.5, 2, 0.3, 0, 2 * Math.PI);
+			ctx.fill();
+
+			ctx.fillStyle = '#4cff96';
+			ctx.beginPath();
+			ctx.arc(ex - 2.2, ey - 2.3, 0.4, 0, 2 * Math.PI);
+			ctx.fill();
+			ctx.beginPath();
+			ctx.arc(ex + 2.8, ey - 2.3, 0.4, 0, 2 * Math.PI);
+			ctx.fill();
+
+			ctx.strokeStyle = '#000000';
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.arc(ex, ey + 1.5, 1.2, 0, Math.PI);
+			ctx.stroke();
+
+			ctx.strokeStyle = '#4cff96';
+			ctx.lineWidth = 1.2;
+			ctx.beginPath();
+			ctx.moveTo(ex - 4, ey + 1);
+			ctx.lineTo(ex - 6, ey + 3);
 			ctx.stroke();
 
 			ctx.beginPath();
-			ctx.arc(enemy.x - 1.5, enemy.y - 1, 1.2, 0, 2 * Math.PI);
-			ctx.fillStyle = '#fff';
-			ctx.fill();
+			ctx.moveTo(ex + 4, ey + 1);
+			ctx.lineTo(ex + 6, ey + 3);
+			ctx.stroke();
+
+			ctx.beginPath();
+			ctx.moveTo(ex - 2.5, ey + 5);
+			ctx.lineTo(ex - 3, ey + 7);
+			ctx.stroke();
+
+			ctx.beginPath();
+			ctx.moveTo(ex + 2.5, ey + 5);
+			ctx.lineTo(ex + 3, ey + 7);
+			ctx.stroke();
 
 			ctx.restore();
 		}
@@ -246,10 +290,18 @@ document.addEventListener('DOMContentLoaded', function() {
 			const dist = Math.hypot(enemy.x - x, enemy.y - y);
 			if (dist <= radius + 5) {
 				nearEnemy = enemy;
+				if (proximityHint) proximityHint.classList.add('active');
 				return true;
 			}
 		}
 		nearEnemy = null;
+		if (proximityHint) proximityHint.classList.remove('active');
+		
+		if (enemiesKilled === totalEnemies && missionChip) {
+			missionChip.textContent = 'Status: Izhod je ODPRT!';
+			missionChip.style.color = '#53f2b6';
+		}
+		
 		return false;
 	}
 
@@ -267,16 +319,30 @@ document.addEventListener('DOMContentLoaded', function() {
 	function drawCircle() {
 		clearCanvas();
 		const iconSize = playerIcon.width;
-		ctx.drawImage(playerIcon, x - iconSize / 2, y - iconSize / 2);
+		ctx.save();
+		ctx.translate(x, y);
+		ctx.rotate((playerDirection * Math.PI) / 180);
+		ctx.drawImage(playerIcon, -iconSize / 2, -iconSize / 2);
+		ctx.restore();
 	}
 
 	function reachedExit() {
-		return Math.hypot(exitGate.x - x, exitGate.y - y) <= exitGate.r + radius + 1;
+		const atExit = Math.hypot(exitGate.x - x, exitGate.y - y) <= exitGate.r + radius + 1;
+		if (atExit && enemiesKilled < totalEnemies) {
+			mazeAlert.fire({
+				icon: 'warning',
+				title: 'Izhod še ni odprt!',
+				text: 'Najprej moraš premagati vse sovražnike!'
+			});
+			return false;
+		}
+		return atExit && enemiesKilled === totalEnemies;
 	}
 
 	function failMission(title, text) {
 		playing = false;
 		stopCountdown();
+		if (proximityHint) proximityHint.classList.remove('active');
 		clearCanvas();
 		setMissionStatus('Konec igre');
 		mazeAlert.fire({
@@ -289,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	function completeMission() {
 		playing = false;
 		stopCountdown();
+		if (proximityHint) proximityHint.classList.remove('active');
 		clearCanvas();
 		setMissionStatus('Zmaga!');
 		mazeAlert.fire({
@@ -307,6 +374,11 @@ document.addEventListener('DOMContentLoaded', function() {
 		if (collidesWithWall(clampedX, clampedY)) {
 			return;
 		}
+
+		if (dy < 0) playerDirection = 0;
+		else if (dy > 0) playerDirection = 180;
+		else if (dx < 0) playerDirection = 270;
+		else if (dx > 0) playerDirection = 90;
 
 		x = clampedX;
 		y = clampedY;
@@ -331,6 +403,10 @@ document.addEventListener('DOMContentLoaded', function() {
 				nearEnemy.killed = true;
 				enemiesKilled++;
 				updateEnemiesChip();
+				if (explosionSound) {
+					explosionSound.currentTime = 0;
+					explosionSound.play();
+				}
 				nearEnemy = null;
 				drawCircle();
 			}
@@ -364,8 +440,9 @@ document.addEventListener('DOMContentLoaded', function() {
 		enemiesKilled = 0;
 		spawnEnemies();
 		updateEnemiesChip();
-		setMissionStatus('Pridi do izhoda');
+		setMissionStatus('Premagaj vse sovražnike!');
 		startCountdown();
+		if (proximityHint) proximityHint.classList.remove('active');
 		drawCircle();
 
 		const solutionLine = document.getElementById('solution-anim');
@@ -373,13 +450,6 @@ document.addEventListener('DOMContentLoaded', function() {
 			solutionLine.style.visibility = 'hidden';
 			solutionLine.style.animation = 'none';
 		}
-	}
-
-	function stopMissionForSolution() {
-		playing = false;
-		stopCountdown();
-		clearCanvas();
-		setMissionStatus('Prikaz rešitve');
 	}
 
 	clearCanvas();
@@ -392,10 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		playBtn.addEventListener('click', function() { startMission(); });
 	}
 
-	const resitevBtn = document.getElementById('start-btn');
-	if (resitevBtn) {
-		resitevBtn.addEventListener('click', function() { stopMissionForSolution(); });
-	}
+
 });
 
 const wallLines = [
