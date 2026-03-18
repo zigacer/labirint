@@ -1,4 +1,4 @@
-# 🧩 3. Projektna naloga – Labirint igra
+# 🧩 3. Projektna naloga – Labirint
 
 ## 📌 Opis projekta
 Pri tej projektni nalogi sem razvil preprosto spletno igro z labirintom. Labirint sem generiral s pomočjo spletnega orodja (http://www.mazegenerator.net/) in ga nato vključil v HTML strukturo.
