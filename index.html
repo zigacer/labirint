@@ -25,11 +25,11 @@
 			</div>
 			<div class="button-row">
 				<button id="play-btn" class="start-button">Igraj</button>
-				<button id="start-btn" class="start-button secondary">Pokazi cilj</button>
+				<button id="start-btn" class="start-button secondary">Pokaži cilj</button>
 			</div>
 		</header>
 		<div class="meta-row">
-			<div id="timer-div" class="timer-chip">Time: 0:00</div>
+			<div id="timer-div" class="timer-chip">Čas: 0:00</div>
 			<div id="mission-chip" class="meta-chip mission-chip">Status: Ready</div>
 			<div class="meta-chip objective-chip">Misija: Premagaj sovražnike in pridi do cilja</div>
 			<div id="enemies-chip" class="meta-chip" style="border-color: rgba(255, 80, 80, 0.5); color: #e9f2ff;">Sovražniki: 0/3</div>
@@ -46,8 +46,13 @@
 				<image href="slike/maze.svg" width="484" height="484" />
 			</svg>
 			<canvas id="maze-canvas" width="484" height="484" class="maze-canvas"></canvas>
+			<div id="proximity-hint" class="proximity-hint">
+				<p class="proximity-hint-text">Pritisni SPACE za napad</p>
+			</div>
 		</div>
 	</main>
+	<!-- Audio -->
+	<audio id="explosion-sound" src="zvok/Explosion.mp3"></audio>
 	<!-- SweetAlert2 CDN -->
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/LineDraw.js"></script>
